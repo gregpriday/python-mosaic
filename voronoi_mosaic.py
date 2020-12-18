@@ -5,6 +5,7 @@ import numpy as np
 class VoronoiMosaic(object):
     def __init__(self):
         self.ref_image = None
+        self.vor_image = None
         self.point_x = []
         self.point_y = []
 
@@ -102,5 +103,49 @@ class VoronoiMosaic(object):
             dic = self.initialize_dic(point_x.size)
             self.voronoi_diagram(width, height, point_x, point_y, dic)
             self.update_positions(dic, point_x, point_y)
-
         return dic
+
+    def generate_voronio_image(self, img, points_x, points_y, dic):
+        # Create an image buffer
+        output_img = np.full(img.size, 255).reshape(img.shape).astype(np.uint8)
+
+        # For every cell
+        for i in range(points_x.size):
+            x = int(round(points_x[i]))
+            y = int(round(points_y[i]))
+            data = dic[i][:, 1:]
+            # Retrieve rbg value of raw image
+            r = int(img[y, x, 0])
+            g = int(img[y, x, 1])
+            b = int(img[y, x, 2])
+
+            # For every pixel in the cell
+            for j in range(data[0].size):
+                tx = data[0][j]
+                ty = data[1][j]
+                r += img[ty, tx, 0]
+                g += img[ty, tx, 1]
+                b += img[ty, tx, 2]
+
+            # Compute average rgb value
+            r /= (data[0].size + 1)
+            g /= (data[0].size + 1)
+            b /= (data[0].size + 1)
+
+            # Copy rbg value to centroidal point
+            output_img[y, x, :] = np.array([r, g, b])
+            # Copy rbg value to every pixel
+            for j in range(data[0].size):
+                tx = data[0][j]
+                ty = data[1][j]
+                output_img[ty, tx, :] = np.array([r, g, b])
+
+        self.vor_image = output_img
+        return output_img
+
+    def calc_e_color(self):
+        # Compute difference
+        color_diff = np.array([self.ref_image - self.vor_image])
+        # Calculate Euclidean distance
+        e_color = np.linalg.norm(color_diff) ** 2
+        return e_color
